@@ -3,6 +3,16 @@ package asia.fourtitude.interviewq.jumble.core;
 import java.io.*;
 import java.util.*;
 
+class TrieNode {
+    Map<Character, TrieNode> children;
+    boolean isEndOfWord;
+
+    public TrieNode() {
+        children = new HashMap<>();
+        isEndOfWord = false;
+    }
+}
+
 public class JumbleEngine {
     private static final Random RANDOM = new Random();
 
@@ -10,6 +20,7 @@ public class JumbleEngine {
     private List<String> palindromeWordList;
     private Map<Integer, List<String>> wordLengthMap;
     private Set<String> wordSet;
+    private TrieNode trieRoot;
 
     private void ensureWordsLoaded() {
         if (words == null) {
@@ -32,14 +43,8 @@ public class JumbleEngine {
             wordLengthMap = new HashMap<>();
             for (String word : words) {
                 int wordLength = word.length();
-
-                if (!wordLengthMap.containsKey(wordLength)) {
-                    List<String> wordsByLength = new ArrayList<>();
-                    wordsByLength.add(word);
-                    wordLengthMap.put(wordLength, wordsByLength);
-                } else {
-                    wordLengthMap.get(wordLength).add(word);
-                }
+                wordLengthMap.putIfAbsent(wordLength, new ArrayList<>());
+                wordLengthMap.get(wordLength).add(word);
             }
         }
     }
@@ -52,6 +57,25 @@ public class JumbleEngine {
                 wordSet.add(word);
             }
         }
+    }
+
+    public void ensureTrieInitialized() {
+        if (trieRoot == null) {
+            ensureWordsLoaded();
+            trieRoot = new TrieNode();
+            for (String word : words) {
+                addWordToTrie(word);
+            }
+        }
+    }
+
+    private void addWordToTrie(String word) {
+        TrieNode current = trieRoot;
+        for (char c : word.toCharArray()) {
+            current.children.putIfAbsent(c, new TrieNode());
+            current = current.children.get(c);
+        }
+        current.isEndOfWord = true;
     }
 
     private void loadWords() {
@@ -227,11 +251,39 @@ public class JumbleEngine {
      * @return The list of words matching the prefix.
      */
     public Collection<String> wordsMatchingPrefix(String prefix) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        ensureTrieInitialized();
+        List<String> result = new ArrayList<>();
+
+        if (prefix == null) {
+            return Collections.unmodifiableCollection(result);
+        }
+
+        String normalizedPrefix = getNormalizedWord(prefix);
+        TrieNode current = trieRoot;
+
+        if (normalizedPrefix == "") {
+            return result;
+        }
+
+        for (char c : normalizedPrefix.toCharArray()) {
+            if (current.children.get(c) == null) {
+                return Collections.unmodifiableCollection(result);
+            }
+            current = current.children.get(c);
+        }
+        findAllWordsFromNode(current, normalizedPrefix, result);
+        return Collections.unmodifiableCollection(result);
+    }
+
+    private void findAllWordsFromNode(TrieNode node, String accumulatedWord, List<String> result) {
+        if (node.isEndOfWord) {
+            result.add(accumulatedWord);
+        }
+        for (Map.Entry<Character, TrieNode> entry : node.children.entrySet()) {
+            char c = entry.getKey();
+            TrieNode childNode = entry.getValue();
+            findAllWordsFromNode(childNode, accumulatedWord + c, result);
+        }
     }
 
     /**
