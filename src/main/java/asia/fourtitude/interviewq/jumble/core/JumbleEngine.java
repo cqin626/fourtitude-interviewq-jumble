@@ -6,39 +6,28 @@ import java.util.*;
 public class JumbleEngine {
     private static final Random RANDOM = new Random();
 
-    private boolean wordsLoaded;
-    private boolean palindromeWordsListInitialized;
-    private boolean wordLengthMapInitialized;
-
     private List<String> words;
     private List<String> palindromeWordList;
     private Map<Integer, List<String>> wordLengthMap;
-
-    public JumbleEngine() {
-        wordsLoaded = false;
-        palindromeWordsListInitialized = false;
-        wordLengthMapInitialized = false;
-    }
+    private Set<String> wordSet;
 
     private void ensureWordsLoaded() {
-        if (!wordsLoaded) {
+        if (words == null) {
             words = new ArrayList<>();
             loadWords();
-            wordsLoaded = true;
         }
     }
 
     private void ensurePalindromeWordsLoaded() {
-        if (!palindromeWordsListInitialized) {
+        if (palindromeWordList == null) {
             ensureWordsLoaded();
             palindromeWordList = new ArrayList<>();
             loadPalindromeWords();
-            palindromeWordsListInitialized = true;
         }
     }
 
     private void ensureWordLengthMapInitialized() {
-        if (!wordLengthMapInitialized) {
+        if (wordLengthMap == null) {
             ensureWordsLoaded();
             wordLengthMap = new HashMap<>();
             for (String word : words) {
@@ -52,7 +41,16 @@ public class JumbleEngine {
                     wordLengthMap.get(wordLength).add(word);
                 }
             }
-            wordLengthMapInitialized = true;
+        }
+    }
+
+    private void ensureWordSetInitialized() {
+        if (wordSet == null) {
+            ensureWordsLoaded();
+            wordSet = new HashSet<>();
+            for (String word : words) {
+                wordSet.add(word);
+            }
         }
     }
 
@@ -69,7 +67,7 @@ public class JumbleEngine {
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
             String word;
             while ((word = bufferedReader.readLine()) != null) {
-                words.add(word.trim());
+                words.add(getNormalizedWord(word));
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load from words", e);
@@ -82,6 +80,10 @@ public class JumbleEngine {
                 palindromeWordList.add(word);
             }
         }
+    }
+
+    private String getNormalizedWord(String word) {
+        return word.trim().toLowerCase();
     }
 
     /**
@@ -98,15 +100,16 @@ public class JumbleEngine {
      * @return The scrambled output/letters.
      */
     public String scramble(String word) {
-        if (word == null || word.length() < 2) {
+        if (word == null) {
             return word;
         }
+        String normalizedWord = getNormalizedWord(word);
 
-        if (word.chars().distinct().count() == 1) {
-            return word;
+        if (normalizedWord.chars().distinct().count() == 1 || normalizedWord.length() < 2) {
+            return normalizedWord;
         }
 
-        char[] charArr = word.toCharArray();
+        char[] charArr = normalizedWord.toCharArray();
         String scrambledWord;
 
         do {
@@ -117,7 +120,7 @@ public class JumbleEngine {
                 charArr[randInt] = temp;
             }
             scrambledWord = String.valueOf(charArr);
-        } while (scrambledWord.equals(word));
+        } while (scrambledWord.equals(normalizedWord));
 
         return scrambledWord;
     }
@@ -199,11 +202,12 @@ public class JumbleEngine {
      * @return true if `word` exists in internal word list.
      */
     public boolean exists(String word) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        if (word == null) {
+            return false;
+        }
+        String normalizedWord = getNormalizedWord(word);
+        ensureWordSetInitialized();
+        return wordSet.contains(normalizedWord);
     }
 
     /**
