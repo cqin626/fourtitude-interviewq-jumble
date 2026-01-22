@@ -2,6 +2,8 @@ package asia.fourtitude.interviewq.jumble.core;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class TrieNode {
     Map<Character, TrieNode> children;
@@ -19,6 +21,8 @@ public class JumbleEngine {
     private List<String> words;
     private List<String> palindromeWordList;
     private Map<Integer, List<String>> wordLengthMap;
+    private Map<Character, List<String>> wordsStartWithCharMap;
+    private Map<Character, List<String>> wordsEndWithCharMap;
     private Set<String> wordSet;
     private TrieNode trieRoot;
 
@@ -76,6 +80,30 @@ public class JumbleEngine {
             current = current.children.get(c);
         }
         current.isEndOfWord = true;
+    }
+
+    private void ensureWordsStartWithCharMapInitialized() {
+        if (wordsStartWithCharMap == null) {
+            ensureWordsLoaded();
+            wordsStartWithCharMap = new HashMap<>();
+            for (String word : words) {
+                char startsWith = word.charAt(0);
+                wordsStartWithCharMap.putIfAbsent(startsWith, new ArrayList<>());
+                wordsStartWithCharMap.get(startsWith).add(word);
+            }
+        }
+    }
+
+    private void ensureWordsEndWithCharMapInitialized() {
+        if (wordsEndWithCharMap == null) {
+            ensureWordsLoaded();
+            wordsEndWithCharMap = new HashMap<>();
+            for (String word : words) {
+                char endsWith = word.charAt(word.length() - 1);
+                wordsEndWithCharMap.putIfAbsent(endsWith, new ArrayList<>());
+                wordsEndWithCharMap.get(endsWith).add(word);
+            }
+        }
     }
 
     private void loadWords() {
@@ -252,22 +280,22 @@ public class JumbleEngine {
      */
     public Collection<String> wordsMatchingPrefix(String prefix) {
         ensureTrieInitialized();
-        List<String> result = new ArrayList<>();
 
         if (prefix == null) {
-            return Collections.unmodifiableCollection(result);
+            return Collections.emptyList();
         }
 
         String normalizedPrefix = getNormalizedWord(prefix);
         TrieNode current = trieRoot;
+        List<String> result = new ArrayList<>();
 
         if (normalizedPrefix == "") {
-            return result;
+            return Collections.emptyList();
         }
 
         for (char c : normalizedPrefix.toCharArray()) {
             if (current.children.get(c) == null) {
-                return Collections.unmodifiableCollection(result);
+                return Collections.emptyList();
             }
             current = current.children.get(c);
         }
@@ -311,11 +339,48 @@ public class JumbleEngine {
      * @return The list of words matching the searching criteria.
      */
     public Collection<String> searchWords(Character startChar, Character endChar, Integer length) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        Character normalizedStartChar = (startChar == null)
+                ? null
+                : Character.toLowerCase(startChar);
+        Character normalizedEndChar = (endChar == null)
+                ? null
+                : Character.toLowerCase(endChar);
+
+        if ((normalizedStartChar == null && normalizedEndChar == null && length == null)
+                || (normalizedStartChar != null && (normalizedStartChar < 'a' || normalizedStartChar > 'z'))
+                || (normalizedEndChar != null && (normalizedEndChar < 'a' || normalizedEndChar > 'z'))
+                || (length != null && length < 1)) {
+            return Collections.emptyList();
+        }
+        ensureWordsStartWithCharMapInitialized();
+        ensureWordsEndWithCharMapInitialized();
+        ensureWordLengthMapInitialized();
+
+        List<String> result = new ArrayList<>();
+        List<String> candidatesByStart = normalizedStartChar == null ? null
+                : wordsStartWithCharMap.get(normalizedStartChar);
+        List<String> candidatesByEnd = normalizedEndChar == null ? null
+                : wordsEndWithCharMap.get(normalizedEndChar);
+        List<String> candidatesByLength = length == null ? null
+                : wordLengthMap.get(length);
+        List<List<String>> candidates = Stream.of(candidatesByStart, candidatesByEnd, candidatesByLength)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        result = getSmallestCandidatesPool(candidates).stream()
+                .filter(word -> normalizedStartChar == null || word.charAt(0) == normalizedStartChar)
+                .filter(word -> normalizedEndChar == null || word.charAt(word.length() - 1) == normalizedEndChar)
+                .filter(word -> length == null || word.length() == length)
+                .collect(Collectors.toList());
+
+        return Collections.unmodifiableCollection(result);
+    }
+
+    private List<String> getSmallestCandidatesPool(List<List<String>> lists) {
+        return lists.stream()
+                .filter(Objects::nonNull)
+                .min(Comparator.comparingInt(List::size))
+                .orElse(Collections.emptyList());
     }
 
     /**
