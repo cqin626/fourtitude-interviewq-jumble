@@ -4,8 +4,55 @@ import java.io.*;
 import java.util.*;
 
 public class JumbleEngine {
-
     private static final Random RANDOM = new Random();
+
+    private boolean wordsLoaded;
+
+    private Collection<String> words;
+
+    private Collection<String> palindromeWords;
+
+    public JumbleEngine() {
+        words = new ArrayList<>();
+        palindromeWords = new ArrayList<>();
+        wordsLoaded = false;
+    }
+
+    private void ensureWordsLoaded() {
+        if (!wordsLoaded) {
+            loadWords();
+            loadPalindromeWords();
+            wordsLoaded = true;
+        }
+    }
+
+    private void loadWords() {
+        String resourcePath = "words.txt";
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+
+        if (inputStream == null) {
+            throw new RuntimeException("Resource not found: " + resourcePath);
+        }
+        
+        try (
+                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+            String word;
+            while ((word = bufferedReader.readLine()) != null) {
+                words.add(word.trim());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load from words", e);
+        }
+    }
+
+    private void loadPalindromeWords() {
+        for (String word : words) {
+            if (isPalindromeWord(word)) {
+                palindromeWords.add(word);
+            }
+        }
+    }
 
     /**
      * From the input `word`, produces/generates a copy which has the same
@@ -63,11 +110,25 @@ public class JumbleEngine {
      * @see https://www.google.com/search?q=palindrome+meaning
      */
     public Collection<String> retrievePalindromeWords() {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        ensureWordsLoaded();
+        return palindromeWords;
+    }
+
+    private boolean isPalindromeWord(String word) {
+        if (word == null || word.length() == 1) {
+            return false;
+        }
+        int start = 0;
+        int end = word.length() - 1;
+
+        while (start <= end) {
+            if (word.charAt(start) != word.charAt(end)) {
+                return false;
+            }
+            start++;
+            end--;
+        }
+        return true;
     }
 
     /**
