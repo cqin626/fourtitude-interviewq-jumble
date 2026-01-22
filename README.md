@@ -1,5 +1,12 @@
-# Jumble (scramble word game)
+# Jumble (Scramble Word Game)
 
-This "Jumble" project is about implementing a word reconstruction game, similar to [Scrabble™](https://en.wikipedia.org/wiki/Scrabble).
+## Completed Tasks
+- Task A
 
-Please refer to "java application developer.docx" for more details.
+## Time Spent
+- **Start:** 22 January, 11:00 a.m.  
+- **End:** 23 January, 01:30 a.m.
+
+## Note
+The data structures powering the required methods in `JumbleEngine` are **lazily loaded**.  
+As a result, a slight overhead is introduced the first time a method is used.
