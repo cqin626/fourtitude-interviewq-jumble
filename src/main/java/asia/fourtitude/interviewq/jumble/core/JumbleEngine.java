@@ -15,6 +15,10 @@ class TrieNode {
     }
 }
 
+/**
+ * Lazy initialization is used for the data structures.
+ * All dictionary words are normalized to lower case.
+ * **/ 
 public class JumbleEngine {
     private static final Random RANDOM = new Random();
 
@@ -23,6 +27,7 @@ public class JumbleEngine {
     private Map<Integer, List<String>> wordLengthMap;
     private Map<Character, List<String>> wordsStartWithCharMap;
     private Map<Character, List<String>> wordsEndWithCharMap;
+    private Map<String, List<String>> wordSignatureMap;
     private Set<String> wordSet;
     private TrieNode trieRoot;
 
@@ -102,6 +107,20 @@ public class JumbleEngine {
                 char endsWith = word.charAt(word.length() - 1);
                 wordsEndWithCharMap.putIfAbsent(endsWith, new ArrayList<>());
                 wordsEndWithCharMap.get(endsWith).add(word);
+            }
+        }
+    }
+
+    private void ensureWordSignatureMapInitialized() {
+        if (wordSignatureMap == null) {
+            ensureWordsLoaded();
+            wordSignatureMap = new HashMap<>();
+            for (String word : words) {
+                char[] wordChar = word.toCharArray();
+                Arrays.sort(wordChar);
+                String wordSignature = String.valueOf(wordChar);
+                wordSignatureMap.putIfAbsent(wordSignature, new ArrayList<>());
+                wordSignatureMap.get(wordSignature).add(word);
             }
         }
     }
@@ -409,11 +428,91 @@ public class JumbleEngine {
      * @return The list of sub words constructed from input `word`.
      */
     public Collection<String> generateSubWords(String word, Integer minLength) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        String normalizedWord = word == null ? null : getNormalizedWord(word);
+        int validLength = minLength == null ? 3 : minLength;
+
+        if (normalizedWord == null || validLength == 0 || normalizedWord.length() < validLength) {
+            return Collections.emptyList();
+        }
+
+        if (word.length() <= 16) {
+            // Since the current size of the given dictionary is 65k, the decision point is
+            // made to 16
+            ensureWordSignatureMapInitialized();
+            return generateUsingSignatureMap(normalizedWord, validLength);
+        } else {
+            ensureWordsLoaded();
+            return generateUsingDictionaryScan(normalizedWord, validLength);
+        }
+    }
+
+    private Collection<String> generateUsingSignatureMap(String word, int minLength) {
+        Set<String> result = new TreeSet<>();
+
+        char[] chars = word.toCharArray();
+        Arrays.sort(chars);
+
+        // Generate all subset signatures
+        generateSubsets(chars, 0, new StringBuilder(), result, minLength);
+        result.remove(word);
+        return result;
+    }
+
+    private void generateSubsets(
+            char[] chars,
+            int index,
+            StringBuilder current,
+            Set<String> result,
+            int minLength) {
+        if (index == chars.length) {
+            if (current.length() >= minLength) {
+                String signature = current.toString();
+                List<String> candidates = wordSignatureMap.get(signature);
+                if (candidates != null) {
+                    result.addAll(candidates);
+                }
+            }
+            return;
+        }
+
+        generateSubsets(chars, index + 1, current, result, minLength);
+        current.append(chars[index]);
+
+        generateSubsets(chars, index + 1, current, result, minLength);
+        current.deleteCharAt(current.length() - 1);
+    }
+
+    private Collection<String> generateUsingDictionaryScan(String word, int minLength) {
+        Map<Character, Integer> charMap = new HashMap<>();
+
+        for (char c : word.toCharArray()) {
+            charMap.put(c, charMap.getOrDefault(c, 0) + 1);
+        }
+
+        Set<String> result = new TreeSet<>();
+
+        for (String dictWord : words) {
+            if (dictWord.length() >= minLength && canBeFormedByCharMap(dictWord, charMap)) {
+                result.add(dictWord);
+            }
+        }
+        result.remove(word);
+        return result;
+    }
+
+    private boolean canBeFormedByCharMap(String candidate, Map<Character, Integer> charMap) {
+        Map<Character, Integer> candidateCharMap = new HashMap<>();
+
+        for (char c : candidate.toCharArray()) {
+            candidateCharMap.put(c, candidateCharMap.getOrDefault(c, 0) + 1);
+        }
+        for (Map.Entry<Character, Integer> e : candidateCharMap.entrySet()) {
+            if (charMap.getOrDefault(e.getKey(), 0) < e.getValue()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
