@@ -7,22 +7,52 @@ public class JumbleEngine {
     private static final Random RANDOM = new Random();
 
     private boolean wordsLoaded;
+    private boolean palindromeWordsListInitialized;
+    private boolean wordLengthMapInitialized;
 
-    private Collection<String> words;
-
-    private Collection<String> palindromeWords;
+    private List<String> words;
+    private List<String> palindromeWordList;
+    private Map<Integer, List<String>> wordLengthMap;
 
     public JumbleEngine() {
-        words = new ArrayList<>();
-        palindromeWords = new ArrayList<>();
         wordsLoaded = false;
+        palindromeWordsListInitialized = false;
+        wordLengthMapInitialized = false;
     }
 
     private void ensureWordsLoaded() {
         if (!wordsLoaded) {
+            words = new ArrayList<>();
             loadWords();
-            loadPalindromeWords();
             wordsLoaded = true;
+        }
+    }
+
+    private void ensurePalindromeWordsLoaded() {
+        if (!palindromeWordsListInitialized) {
+            ensureWordsLoaded();
+            palindromeWordList = new ArrayList<>();
+            loadPalindromeWords();
+            palindromeWordsListInitialized = true;
+        }
+    }
+
+    private void ensureWordLengthMapInitialized() {
+        if (!wordLengthMapInitialized) {
+            ensureWordsLoaded();
+            wordLengthMap = new HashMap<>();
+            for (String word : words) {
+                int wordLength = word.length();
+
+                if (!wordLengthMap.containsKey(wordLength)) {
+                    List<String> wordsByLength = new ArrayList<>();
+                    wordsByLength.add(word);
+                    wordLengthMap.put(wordLength, wordsByLength);
+                } else {
+                    wordLengthMap.get(wordLength).add(word);
+                }
+            }
+            wordLengthMapInitialized = true;
         }
     }
 
@@ -33,7 +63,7 @@ public class JumbleEngine {
         if (inputStream == null) {
             throw new RuntimeException("Resource not found: " + resourcePath);
         }
-        
+
         try (
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
@@ -49,7 +79,7 @@ public class JumbleEngine {
     private void loadPalindromeWords() {
         for (String word : words) {
             if (isPalindromeWord(word)) {
-                palindromeWords.add(word);
+                palindromeWordList.add(word);
             }
         }
     }
@@ -110,8 +140,8 @@ public class JumbleEngine {
      * @see https://www.google.com/search?q=palindrome+meaning
      */
     public Collection<String> retrievePalindromeWords() {
-        ensureWordsLoaded();
-        return palindromeWords;
+        ensurePalindromeWordsLoaded();
+        return Collections.unmodifiableCollection(palindromeWordList);
     }
 
     private boolean isPalindromeWord(String word) {
@@ -145,11 +175,15 @@ public class JumbleEngine {
      *         Or null if none matching.
      */
     public String pickOneRandomWord(Integer length) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        if (length == null) {
+            ensureWordsLoaded();
+            return words.get(RANDOM.nextInt(words.size()));
+        }
+        ensureWordLengthMapInitialized();
+
+        List<String> matchingWords = wordLengthMap.get(length);
+
+        return matchingWords == null ? null : matchingWords.get(RANDOM.nextInt(matchingWords.size()));
     }
 
     /**
